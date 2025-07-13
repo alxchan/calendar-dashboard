@@ -4,6 +4,7 @@ namespace CalendarDashboard.Models
 {
     public class Task
     {
+        [Required]
         public int Id { get; set; }
 
         [Required]
@@ -13,7 +14,7 @@ namespace CalendarDashboard.Models
         public decimal CompletionRate { get; set; }
         
         [Required]
-        public Boolean Completed { get; set; }
+        public bool Completed { get; set; }
 
         public string? Description { get; set; }
 

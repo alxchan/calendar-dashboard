@@ -1,6 +1,10 @@
 using System.Diagnostics;
+using CalendarDashboard.Services;
+using Google.Apis.Auth.OAuth2;
 using CalendarDashboard.Models;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CalendarDashboard.Controllers
 {
@@ -23,6 +27,7 @@ namespace CalendarDashboard.Controllers
             return View();
         }
 
+        [Authorize]
         public IActionResult Calendar() 
         {
             return View();

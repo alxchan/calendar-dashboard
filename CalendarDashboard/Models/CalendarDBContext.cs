@@ -9,7 +9,7 @@ namespace CalendarDashboard.Models
         { 
         }
 
-        public DbSet<Event> Events { get; set; }
+        public DbSet<LocalEvent> Events { get; set; }
         public DbSet<Task> Tasks { get; set; }
   
     }

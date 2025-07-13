@@ -2,18 +2,22 @@
 
 namespace CalendarDashboard.Models
 {
-    public class Event
+    public class LocalEvent
     {
+        [Required]
         public int Id {  get; set; }
 
         [Required]
         public string Name { get; set; }
         
         [Required]
-        public string Place { get; set; }
+        public string Location { get; set; }
 
         [Required]
         public DateTime StartTime { get; set; }
+
+        [Required]
+        public bool Confirmed { get; set; }
 
         [Required]
         public DateTime EndTime { get; set; }
