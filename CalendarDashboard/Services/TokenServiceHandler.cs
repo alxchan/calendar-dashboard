@@ -1,8 +1,5 @@
-﻿using System.Net.Http;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using CalendarDashboard.Models;
-using Google.Apis.Auth.OAuth2;
-using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 
 namespace CalendarDashboard.Services

@@ -13,18 +13,21 @@ namespace CalendarDashboard.Controllers
         private readonly CalendarDBContext db;
         private readonly CalendarServiceHandler calendarServiceHandler;
         private readonly TokenServiceHandler tokenServiceHandler;
+        private readonly IHttpContextAccessor httpContextAccessor;
 
-        public CalendarAPIController(CalendarDBContext db, CalendarServiceHandler calendarServiceHandler, TokenServiceHandler tokenServiceHandler) {
+        public CalendarAPIController(CalendarDBContext db, CalendarServiceHandler calendarServiceHandler, TokenServiceHandler tokenServiceHandler, IHttpContextAccessor httpContext)
+        {
             this.db = db;
             this.calendarServiceHandler = calendarServiceHandler;
             this.tokenServiceHandler = tokenServiceHandler;
+            this.httpContextAccessor = httpContext;
         }
 
         [HttpGet("test")]
         public async Task<IActionResult> Test()
         {
-            var calendarService = new GoogleCalendarService(calendarServiceHandler, tokenServiceHandler);
-            var events = await calendarService.GetUpcomingEvents();
+            var calendarService = new GoogleCalendarService(calendarServiceHandler, tokenServiceHandler, httpContextAccessor);
+            var events = await calendarService.AddEvent();
             if (events == null) { return Unauthorized("User is not signed in!"); }
             return Ok(events);
         }
