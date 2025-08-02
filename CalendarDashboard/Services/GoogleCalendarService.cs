@@ -7,13 +7,21 @@ namespace CalendarDashboard.Services
 {
     public class GoogleCalendarService
     {
-        private readonly CalendarService calendarService;
-        public GoogleCalendarService(CalendarService service)
+        private readonly CalendarServiceHandler calendarServiceHandler;
+        private readonly TokenServiceHandler tokenServiceHandler;
+        public GoogleCalendarService(CalendarServiceHandler calendarServiceHandler, TokenServiceHandler tokenServiceHandler)
         {
-            calendarService = service;
+            this.calendarServiceHandler = calendarServiceHandler;
+            this.tokenServiceHandler = tokenServiceHandler;
         }
 
-        public async Task<IList<Event>>GetUpcomingEvents() {
+        public async Task<IList<Event>?> GetUpcomingEvents() {
+
+            var accessToken = tokenServiceHandler.GetDecryptedAccessToken();
+            if (accessToken == null) {
+                Console.WriteLine("Cannot find in DB!");
+                return null; }
+            var calendarService = calendarServiceHandler.GenerateCalendarService(accessToken);
             var request = calendarService.Events.List("primary");
             request.TimeMinDateTimeOffset = DateTime.Now;
             request.ShowDeleted = false;

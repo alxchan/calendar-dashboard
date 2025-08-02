@@ -7,3 +7,6 @@ obj/
 *.log
 wwwroot/
 appsettings.Development.json
+.env
+*.db*
+/Migrations/

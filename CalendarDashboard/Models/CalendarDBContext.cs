@@ -11,6 +11,8 @@ namespace CalendarDashboard.Models
 
         public DbSet<LocalEvent> Events { get; set; }
         public DbSet<Task> Tasks { get; set; }
+
+        public DbSet<UserToken> UserTokens { get; set; }
   
     }
 }

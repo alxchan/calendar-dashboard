@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  webapp:
+    env_file: "./.env"
+    build:
+      context: .
+      dockerfile: CalendarDashboard/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASS}
+
+  postgres:
+    env_file: ".env"
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
