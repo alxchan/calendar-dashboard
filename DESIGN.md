@@ -1,10 +1,10 @@
-# Integrated Calendar Dashboard – DESIGN.md
+# Integrated Calendar Dashboard â€“ DESIGN.md
 
 ## 1. Technical Design
 
 ### Architecture
 - The application follows the **Model-View-Controller (MVC)** pattern.
-- **Reasoning:** While MVC introduces structure and may add complexity early on, it allows for better separation of concerns and long-term scalability. I’m also familiar with MVVM, which makes this transition natural.
+- **Reasoning:** While MVC introduces structure and may add complexity early on, it allows for better separation of concerns and long-term scalability. Iâ€™m also familiar with MVVM, which makes this transition natural.
 
 ### Authentication
 - **OAuth 2.0 via Google** will be used for user authentication and authorization.
@@ -25,8 +25,6 @@
 ---
 
 ## 2. Design Decisions
-
----
 
 ### Objective  
 Implement secure and flexible user sign-in using Google OAuth 2.0, with support for offline features and multi-session continuity.
@@ -66,7 +64,7 @@ Implement secure and flexible user sign-in using Google OAuth 2.0, with support 
 - Sessions managed via a `signed_in` flag in the database.
 - Logout flags the user as signed out but retains encrypted tokens for future re-authentication if necessary.
 
-#### Option 3: Hybrid – Store refresh token in database and access token in secure cookie  
+#### Option 3: Hybrid â€“ Store refresh token in database and access token in secure cookie  
 **Pros:**
 - Combines the flexibility of database storage with the simplicity of cookies.
 - Supports offline features and multi-device sessions.
@@ -86,7 +84,7 @@ Implement secure and flexible user sign-in using Google OAuth 2.0, with support 
 
 ---
 
-**Objective:**  
+### Objective:  
 Minimize latency when fetching Google Calendar data to improve user experience, while balancing complexity and resource usage.
 
 ### Options
@@ -120,6 +118,31 @@ Minimize latency when fetching Google Calendar data to improve user experience, 
 
 - The chosen approach will primarily balance latency and implementation complexity, with memory overhead as a secondary consideration.
 
+---
+
+### Objective
+Implement a user login option that maximizes security while minimizing the number of logins required during a session.
+
+### Options
+
+1. **Login sessions determined by a cookie**  
+   **Pros:**  
+   - User sessions have a fixed length.  
+   - Logging out is straightforwardâ€”just delete the cookie.  
+   **Cons:**  
+   - Sessions might be too short, causing users to log in multiple times in one session.
+
+2. **Refresh login using the refresh token**  
+   **Pros:**  
+   - Users stay logged in indefinitely during a session.  
+   **Cons:**  
+   - Users need to manually log out, which is a security risk on shared devices.  
+   - Adds complexity by interrupting the normal authentication flow.
+
+### Selected Approach
+
+Option 1 is chosen because it offers a simple implementation while reasonably protecting user credentials. Using a 30-minute sliding expiration window helps reduce frequent logins within a session.
+  
 ---
 
 ## 3. Roadmap
