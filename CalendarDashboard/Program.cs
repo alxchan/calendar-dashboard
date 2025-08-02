@@ -22,6 +22,7 @@ namespace CalendarDashboard
             // Add services to the container.
             builder.Services.AddControllersWithViews();
             builder.Services.AddHttpContextAccessor();
+            builder.Services.AddHttpClient();
             builder.Services.AddScoped<CalendarServiceHandler>();
             builder.Services.AddScoped<TokenServiceHandler>();
 
@@ -36,16 +37,19 @@ namespace CalendarDashboard
 
 
 
-            builder.Services.AddAuthentication(options => {
+            builder.Services.AddAuthentication(options =>
+            {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-            }).AddCookie(options => {
+            }).AddCookie(options =>
+            {
                 options.Cookie.HttpOnly = true;
                 //options.Cookie.SameSite = SameSiteMode.Strict;
                 options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
                 options.SlidingExpiration = true;
-            }).AddGoogle(options => {
+            }).AddGoogle(options =>
+            {
                 options.ClientId = builder.Configuration["Google:ClientId"]!;
                 options.ClientSecret = builder.Configuration["Google:ClientSecret"]!;
                 options.Scope.Add(CalendarService.Scope.Calendar);
@@ -70,7 +74,7 @@ namespace CalendarDashboard
                         existing.RefreshToken = !string.IsNullOrEmpty(refreshToken) ? AesGcmEncryptor.encrypt(refreshToken, Convert.FromBase64String(builder.Configuration["API_KEY"]!)) : existing.RefreshToken;
                         db.UserTokens.Update(existing);
                     }
-                    else 
+                    else
                     {
                         db.UserTokens.Add(new UserToken
                         {

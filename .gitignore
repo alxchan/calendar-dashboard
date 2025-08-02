@@ -9,4 +9,4 @@ wwwroot/
 appsettings.Development.json
 .env
 *.db*
-/Migrations/
+Migrations/

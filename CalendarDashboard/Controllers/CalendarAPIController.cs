@@ -28,5 +28,12 @@ namespace CalendarDashboard.Controllers
             if (events == null) { return Unauthorized("User is not signed in!"); }
             return Ok(events);
         }
+
+        [HttpGet("refresh")]
+        public async Task<string> RefreshToken() 
+        {
+            return await tokenServiceHandler.RefreshAccessToken("");
+        
+        }
     }
 }
