@@ -1,6 +1,7 @@
 ﻿using CalendarDashboard.Models;
 using CalendarDashboard.Services;
 using Google.Apis.Calendar.v3;
+using Google.Apis.Calendar.v3.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,9 +28,9 @@ namespace CalendarDashboard.Controllers
         public async Task<IActionResult> Test()
         {
             var calendarService = new GoogleCalendarService(calendarServiceHandler, tokenServiceHandler, httpContextAccessor);
-            var events = await calendarService.AddEvent();
-            if (events == null) { return Unauthorized("User is not signed in!"); }
-            return Ok(events);
+            var listEvents = await calendarService.GetUpcomingEvents();
+            if (listEvents == null) { return Unauthorized("User is not signed in!"); }
+            return Ok(listEvents);
         }
 
         [HttpGet("refresh")]

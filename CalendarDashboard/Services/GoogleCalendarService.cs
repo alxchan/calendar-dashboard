@@ -37,32 +37,59 @@ namespace CalendarDashboard.Services
 
         }
 
-        public async Task<Event?> AddEvent() {
+        public async Task<Event?> AddEvent(string? summary, string? description, EventDateTime? start, EventDateTime? end, List<EventAttendee>? attendees) {
             //Later add parameters to fill out event fields
             var authResult = await httpContextAccessor.HttpContext!.AuthenticateAsync();
             var accessToken = authResult.Properties!.GetTokenValue("access_token");
             var calendarService = calendarServiceHandler.GenerateCalendarService(accessToken!);
             Event newEvent = new Event
             {
-                Summary = "Test Event",
-                Description = "This is an event added by an API endpoint",
-                Start = new EventDateTime()
-                {
-                    DateTimeDateTimeOffset = DateTime.Now.AddHours(1),
-                    TimeZone = "America/Toronto"
-                },
-                End = new EventDateTime()
-                {
-                    DateTimeDateTimeOffset = DateTime.Now.AddHours(5),
-                    TimeZone = "America/Toronto"
-                },
-                Attendees = [new EventAttendee() { Email = "ADD EMAIL HERE", Organizer = true }, new EventAttendee { Email = "ADD EMAIL HERE"}]
+                Summary = summary,
+                Description = description,
+                Start = start,
+                End = end,
+                Attendees = attendees
 
             };
             var request = calendarService.Events.Insert(newEvent, "primary");
             var createdRequest = await request.ExecuteAsync();
             return newEvent;  
           
+        }
+
+        public async Task<Event?> UpdateEvent(string eventId, string? summary, string? description, EventDateTime? start, EventDateTime? end, List<EventAttendee>? attendees) {
+            var authResult = await httpContextAccessor.HttpContext!.AuthenticateAsync();
+            var accessToken = authResult.Properties!.GetTokenValue("access_token");
+            var calendarService = calendarServiceHandler.GenerateCalendarService(accessToken!);
+            var prevEvent = calendarService.Events.Get("primary", eventId).Execute();
+            Console.WriteLine(summary);
+            Event updateEvent = new Event
+            {
+                Summary = !string.IsNullOrEmpty(summary) ? summary : prevEvent.Summary,
+                Description = !string.IsNullOrEmpty(description) ? description : prevEvent.Description,
+                Start = start ?? prevEvent.Start,
+                End = end ?? prevEvent.End,
+                Attendees = attendees ?? prevEvent.Attendees
+
+            };
+
+            var request = calendarService.Events.Update(updateEvent, "primary", eventId);
+            var updateRequest = await request.ExecuteAsync();
+            return updateEvent;
+        }
+
+        public async Task<Boolean> DeleteEvent(string eventId) {
+            var authResult = await httpContextAccessor.HttpContext!.AuthenticateAsync();
+            var accessToken = authResult.Properties!.GetTokenValue("access_token");
+            var calendarService = calendarServiceHandler.GenerateCalendarService(accessToken!);
+
+            var request = calendarService.Events.Delete("primary", eventId);
+            try
+            {
+                var deleteRequest = await request.ExecuteAsync();
+            }
+            catch { return false; }
+            return true;
         }
 
     }
