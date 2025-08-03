@@ -4,6 +4,7 @@ using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.HttpResults;
+using static Google.Apis.Auth.OAuth2.Web.AuthorizationCodeWebApp;
 
 namespace CalendarDashboard.Services
 {
@@ -19,12 +20,28 @@ namespace CalendarDashboard.Services
             this.httpContextAccessor = httpContext;
         }
 
-        public async Task<IList<Event>?> GetUpcomingEvents() {
+
+        public async Task<IList<string>> GetCalendarIds() {
+            var authResult = await httpContextAccessor.HttpContext!.AuthenticateAsync();
+            var accessToken = authResult.Properties!.GetTokenValue("access_token");
+            var calendarService = calendarServiceHandler.GenerateCalendarService(accessToken!);
+            var request = calendarService.CalendarList.List();
+            var calendarEntries = await request.ExecuteAsync();
+            var calendarIds = new List<string>(); 
+            foreach (var item in calendarEntries.Items)
+            {
+                calendarIds.Add(item.Id);
+            };
+
+            return calendarIds;
+        }
+
+        public async Task<IList<Event>?> GetUpcomingEvents(string calendarId) {
 
             var authResult = await httpContextAccessor.HttpContext!.AuthenticateAsync();
             var accessToken = authResult.Properties!.GetTokenValue("access_token");
             var calendarService = calendarServiceHandler.GenerateCalendarService(accessToken!);
-            var request = calendarService.Events.List("primary");
+            var request = calendarService.Events.List(calendarId);
             request.TimeMinDateTimeOffset = DateTime.Now;
             request.ShowDeleted = false;
             request.SingleEvents = true;

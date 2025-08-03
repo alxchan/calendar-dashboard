@@ -1,29 +1,42 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Google.Apis.Calendar.v3.Data;
 
 namespace CalendarDashboard.Models
 {
     public class LocalEvent
     {
+        //REQUIRED PROPERTIES
         [Required]
-        public int Id {  get; set; }
+        public string UserId { get; set; } = null!;
 
         [Required]
-        public string Name { get; set; }
+        public string EventId { get; set; } = null!;
+
+        [Required]
+        public string CalendarId { get; set; } = null!;
         
         [Required]
-        public string Location { get; set; }
-
+        public EventDateTime StartTime { get; set; } = null!;
+        
         [Required]
-        public DateTime StartTime { get; set; }
+        public EventDateTime EndTime { get; set; } = null!;
 
-        [Required]
-        public bool Confirmed { get; set; }
 
-        [Required]
-        public DateTime EndTime { get; set; }
+        //COMMON OPTIONAL PROPERTIES
+
+        public string? Name { get; set; }
 
         public string? Description { get; set; }
+       
+        public string? Location { get; set; }
 
+        public string? Status { get; set; }
+        
+        public List<EventAttendee>? Attendees { get; set; }
+       
+
+        //LESS COMMONLY USED PROPERTIES
         public string? Notes { get; set; }
+
     }
 }

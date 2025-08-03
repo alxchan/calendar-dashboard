@@ -8,7 +8,7 @@ namespace CalendarDashboard.Models
         public int Id { get; set; }
 
         [Required]
-        public string Name { get; set; }
+        public string? Name { get; set; }
         
         [Required]
         public decimal CompletionRate { get; set; }

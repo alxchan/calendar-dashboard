@@ -4,9 +4,8 @@ namespace CalendarDashboard.Models
 {
     public class UserToken
     {
-        public int Id { get; set; }
 
-        [Required]
+        [Key]
         public string UserId { get; set; } = null!;
 
         public string? AccessToken { get; set; } = null;
