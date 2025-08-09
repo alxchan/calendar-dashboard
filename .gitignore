@@ -10,3 +10,4 @@ appsettings.Development.json
 .env
 *.db*
 Migrations/
+node_module*

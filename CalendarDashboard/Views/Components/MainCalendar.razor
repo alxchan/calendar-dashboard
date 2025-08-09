@@ -1,0 +1,28 @@
+@using Google.Apis.Calendar.v3.Data
+
+@{
+    var today = DateTime.Today;
+    // Find the Sunday of the current week (assuming Sunday start)
+    var sunday = today.AddDays(-(int)today.DayOfWeek);
+
+    var days = Enumerable.Range(0, 7)
+    .Select(i => sunday.AddDays(i))
+    .ToList();
+}
+
+<div class="grid grid-cols-7 [&>*]:text-primary-text gap-1 [&>*]:bg-secondary-background [&>*]:text-center h-full">
+    @* Needs to contain: Event name, Time *@
+    @for (int i = 0; i < 7; i++)
+    {
+        var day = days[i];
+        <div class="col-start-@i+1 h-1/12 gap-1 flex flex-col items-center justify-center">
+            <div>@day.ToString("dddd")</div>
+            <div>@day.Day</div>
+        </div>
+    }
+</div>
+@code {
+    [Parameter] public string Name { get; set; }
+    [Parameter] public EventDateTime time { get; set; }
+
+}

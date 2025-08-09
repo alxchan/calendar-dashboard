@@ -25,6 +25,8 @@ namespace CalendarDashboard
             builder.Services.AddHttpClient();
             builder.Services.AddScoped<CalendarServiceHandler>();
             builder.Services.AddScoped<TokenServiceHandler>();
+            builder.Services.AddRazorPages();
+            builder.Services.AddServerSideBlazor();
 
             //Uses PostgreSQL
             //builder.Services.AddDbContext<CalendarDBContext>(options =>

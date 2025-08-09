@@ -1,7 +1,10 @@
-﻿@{
+﻿@using Google.Apis.Calendar.v3.Data
+@{
     ViewData["Title"] = "Calendar";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Calendar</h1>
-</div>
+<component type="typeof(CalendarDashboard.Views.Components.MainCalendar)" render-mode="ServerPrerendered" param-name="@( "hi" )" param-time="@(new EventDateTime 
+{ 
+    DateTimeDateTimeOffset = System.DateTime.Now, 
+    TimeZone = TimeZoneInfo.Local.Id 
+})" />
