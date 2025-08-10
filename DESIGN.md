@@ -15,7 +15,9 @@
 - **Reasoning:** SQL offers relational structure, ease of querying, and flexible schema evolution.
 
 ### Frontend  
-- Views will use Razor Pages with support for responsive design (desktop + mobile).
+- Razor views will be used to structure and render the main layouts, providing responsive designs for both desktop and mobile devices.
+- Blazor components will be embedded within Razor views to handle dynamic content rendering and create reusable, interactive UI elements.
+- Tailwind CSS will be chosen over Bootstrap to provide greater flexibility and control when styling components.
 
 ### API Integration  
 - The application will connect to the **Google Calendar API** to synchronize events.  
