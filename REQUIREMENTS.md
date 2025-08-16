@@ -31,6 +31,7 @@ Integrated Calendar Dashboard is a calendar management tool which streamlines sc
     - Description (optional)
     - Notes (optional)
 - A progress bar should be displayed for each task to indicate progress.
+- Tasks should support both definite and indefinite end times; users can mark a task as in progress and close it later.
 - Tasks should be exportable to Excel through VBA.
 
 ## 4. Non-Functional Requirements
