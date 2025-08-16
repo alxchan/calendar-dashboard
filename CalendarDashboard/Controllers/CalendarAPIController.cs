@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CalendarDashboard.Controllers
 {
     [ApiController]
-    [Route("api/[Controller]")]
+    [Route("api/calendar")]
     public class CalendarAPIController : Controller
     {
         private readonly CalendarDBContext db;
@@ -29,9 +29,9 @@ namespace CalendarDashboard.Controllers
         [HttpGet("test")]
         public async Task<IActionResult> RetrieveUpcomingEvents()
         {
+            Console.WriteLine("Service: " + HttpContext.User?.FindFirst("service")!.Value);
             var calendarService = new GoogleCalendarService(calendarServiceHandler, tokenServiceHandler, httpContextAccessor);
-            var claims = httpContextAccessor.HttpContext?.User.Claims;
-            var googleUserId = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var email = HttpContext.User?.FindFirst(ClaimTypes.Email)?.Value;
             var calendarIds = await calendarService.GetCalendarIds();
             for (int i = 0; i < calendarIds.Count; i++) {
                 Console.WriteLine(calendarIds);
@@ -41,7 +41,7 @@ namespace CalendarDashboard.Controllers
             var listEvents = await calendarService.GetUpcomingEvents(calendarId);
             foreach (var item in listEvents!)
             {
-                var existing = db.Events.FirstOrDefault(x => x.UserId == googleUserId && x.CalendarId == calendarId && x.EventId == item.Id);
+                var existing = db.Events.FirstOrDefault(x => x.Email == email);
                 if (existing != null)
                 {
                     existing.Attendees = (List<EventAttendee>?)(item.Attendees ?? existing.Attendees);
@@ -54,7 +54,7 @@ namespace CalendarDashboard.Controllers
                     db.Events.Update(existing);
                 }
                 else {
-                    db.Events.Add(new LocalEvent() { UserId = googleUserId!, EventId = item.Id, CalendarId = calendarId, Name = item.Summary, Description = item.Description, StartTime = item.Start!, EndTime = item.End!, Location = item.Location });
+                    db.Events.Add(new LocalEvent() { Email = email!, EventId = item.Id, CalendarId = calendarId, Name = item.Summary, Description = item.Description, StartTime = item.Start!, EndTime = item.End!, Location = item.Location });
 
                 }
                     Console.WriteLine(item.CreatedDateTimeOffset);
@@ -64,11 +64,11 @@ namespace CalendarDashboard.Controllers
             return Ok(listEvents);
         }
 
-        [HttpGet("refresh")]
-        public async Task<string> RefreshToken() 
-        {
-            return await tokenServiceHandler.RefreshAccessToken("");
+        //[HttpGet("refresh")]
+        //public async Task<string> RefreshToken() 
+        //{
+        //    return await tokenServiceHandler.RefreshAccessToken("");
         
-        }
+        //}
     }
 }

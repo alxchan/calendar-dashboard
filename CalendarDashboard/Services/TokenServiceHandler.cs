@@ -19,22 +19,22 @@ namespace CalendarDashboard.Services
             this.client = client;
         }
 
-        public string? GetDecryptedAccessToken()
-        {
-            var claims = httpContextAccessor.HttpContext?.User.Claims;
-            var googleUserId = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            Console.WriteLine("Google User ID is: " + googleUserId);
-            //Retrieves and decrypts the token from currently signed in user
-            var data = dbContext.UserTokens.FirstOrDefault(x => x.UserId == googleUserId);
-            if (data == null) { return null; }
-            else { return AesGcmEncryptor.decrypt(data.AccessToken!, Convert.FromBase64String(configuration["API_KEY"]!)); }
-        }
+        //public string? GetDecryptedAccessToken()
+        //{
+        //    var claims = httpContextAccessor.HttpContext?.User.Claims;
+        //    var googleUserId = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        //    Console.WriteLine("Google User ID is: " + googleUserId);
+        //    //Retrieves and decrypts the token from currently signed in user
+        //    var data = dbContext.UserTokens.FirstOrDefault(x => x.UserId == googleUserId);
+        //    if (data == null) { return null; }
+        //    else { return AesGcmEncryptor.decrypt(data.AccessToken!, Convert.FromBase64String(configuration["API_KEY"]!)); }
+        //}
 
         public string? GetDecryptedRefreshToken()
         {
             var claims = httpContextAccessor.HttpContext?.User.Claims;
             var googleUserId = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var data = dbContext.UserTokens.FirstOrDefault(x => x.UserId == googleUserId);
+            var data = dbContext.UserTokens.FirstOrDefault(x => x.Email == googleUserId);
             if (data == null) { return null; }
             else
             {
@@ -43,13 +43,13 @@ namespace CalendarDashboard.Services
             }
         }
 
-        public async Task<string> RefreshAccessToken(string userId)
+        public async Task<string> RefreshAccessToken(string refreshToken)
         {
             //When making requests to refresh access tokens i.e. offline tasks, store the user id in the associated tasks
             var postData = new Dictionary<string, string> {
                 {"client_id",  configuration["Google:ClientId"]!},
                 {"client_secret", configuration["Google:ClientSecret"]! },
-                {"refresh_token", GetDecryptedRefreshToken()! },
+                {"refresh_token", refreshToken! },
                 {"grant_type", "refresh_token" }
             };
 
@@ -61,13 +61,6 @@ namespace CalendarDashboard.Services
 
             var tokenData = JObject.Parse(responseContent);
             string newAccessToken = tokenData.Value<string>("access_token")!;
-
-            //Add to DB
-            var data = dbContext.UserTokens.FirstOrDefault(x => x.UserId == userId);
-            if (data != null) { 
-                data.AccessToken = newAccessToken;
-                dbContext.UserTokens.Update(data);
-            }
 
             return newAccessToken;
         }

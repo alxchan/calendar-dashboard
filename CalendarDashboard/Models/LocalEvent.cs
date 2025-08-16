@@ -6,8 +6,11 @@ namespace CalendarDashboard.Models
     public class LocalEvent
     {
         //REQUIRED PROPERTIES
+        [Key]
+        public int Id { get; set; }
+
         [Required]
-        public string UserId { get; set; } = null!;
+        public string Email { get; set; } = null!;
 
         [Required]
         public string EventId { get; set; } = null!;

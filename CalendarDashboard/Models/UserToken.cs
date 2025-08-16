@@ -6,8 +6,13 @@ namespace CalendarDashboard.Models
     {
 
         [Key]
-        public string UserId { get; set; } = null!;
+        public int Id { get; set; }
 
+        [Required]
+        public string Email { get; set; } = null!;
+
+        [Required]
+        public string Service { get; set; } = null!;
         public string? AccessToken { get; set; } = null;
         
         [Required]

@@ -1,4 +1,6 @@
 using System;
+using System.Net;
+using System.Security.Claims;
 using System.Text.Json;
 using CalendarDashboard.Models;
 using CalendarDashboard.Services;
@@ -25,8 +27,29 @@ namespace CalendarDashboard
             builder.Services.AddHttpClient();
             builder.Services.AddScoped<CalendarServiceHandler>();
             builder.Services.AddScoped<TokenServiceHandler>();
+            builder.Services.AddTransient<AccessTokenHandler>();
+            builder.Services.AddTransient<CookieHandler>();
             builder.Services.AddRazorPages();
             builder.Services.AddServerSideBlazor();
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowSpecificOrigin", policy =>
+                {
+                    policy.WithOrigins("http://localhost:5180/, https://localhost:7107/")
+                          .AllowCredentials()
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
+
+            builder.Services.AddHttpClient("CalendarAPI", client =>
+            {
+                client.BaseAddress = new Uri("https://localhost:7107/");
+                client.DefaultRequestHeaders.Add("Accept", "application/json");
+            }).ConfigurePrimaryHttpMessageHandler(sp =>
+            {
+                return CookieHandler.AttachCookie(sp, "https://localhost:7107/");
+            }).AddHttpMessageHandler<AccessTokenHandler>();
 
             //Uses PostgreSQL
             //builder.Services.AddDbContext<CalendarDBContext>(options =>
@@ -61,15 +84,22 @@ namespace CalendarDashboard
 
                 options.Events.OnCreatingTicket = async context =>
                 {
+                    var claimsIdentity = (ClaimsIdentity)context.Principal!.Identity!;
+                    if (!claimsIdentity.HasClaim(c => c.Type == "service"))
+                    {
+                        claimsIdentity.AddClaim(new Claim("service", "google"));
+                    }
+
+
                     var accessToken = context.AccessToken;
                     var refreshToken = context.RefreshToken;
                     DateTime? expiresAt = context.ExpiresIn.HasValue ? DateTime.UtcNow.Add(context.ExpiresIn.Value) : null;
-                    var userJSON = context.User.TryGetProperty("sub", out JsonElement sub);
-                    string? userId = sub.GetString();
+                    var userJSON = context.User.TryGetProperty("email", out JsonElement sub);
+                    string? email = sub.GetString()!.ToLower();
 
                     //To Do: Implement SQL Integration
                     var db = context.HttpContext.RequestServices.GetRequiredService<CalendarDBContext>();
-                    var existing = db.UserTokens.FirstOrDefault(x => x.UserId == userId);
+                    var existing = db.UserTokens.FirstOrDefault(x => x.Email == email && x.Service == "google");
                     if (existing != null)
                     {
                         existing.AccessToken = !string.IsNullOrEmpty(accessToken) ? AesGcmEncryptor.encrypt(accessToken!, Convert.FromBase64String(builder.Configuration["API_KEY"]!)) : null;
@@ -80,7 +110,8 @@ namespace CalendarDashboard
                     {
                         db.UserTokens.Add(new UserToken
                         {
-                            UserId = userId!,
+                            Email = email!,
+                            Service = "google",
                             AccessToken = !string.IsNullOrEmpty(accessToken) ? AesGcmEncryptor.encrypt(accessToken!, Convert.FromBase64String(builder.Configuration["API_KEY"]!)) : null,
                             RefreshToken = AesGcmEncryptor.encrypt(refreshToken!, Convert.FromBase64String(builder.Configuration["API_KEY"]!)),
                         });
@@ -110,13 +141,14 @@ namespace CalendarDashboard
             app.UseStaticFiles();
 
             app.UseRouting();
+            app.UseCors("AllowSpecificOrigin");
 
             app.UseAuthorization();
 
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
-
+            app.MapBlazorHub();
             app.Run();
             return System.Threading.Tasks.Task.CompletedTask;
         }
