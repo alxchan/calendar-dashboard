@@ -1,5 +1,7 @@
 using System;
 using System.Net;
+using System.Net.Http;
+using System.Reflection.Metadata;
 using System.Security.Claims;
 using System.Text.Json;
 using CalendarDashboard.Models;
@@ -7,10 +9,12 @@ using CalendarDashboard.Services;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace CalendarDashboard
@@ -28,28 +32,67 @@ namespace CalendarDashboard
             builder.Services.AddScoped<CalendarServiceHandler>();
             builder.Services.AddScoped<TokenServiceHandler>();
             builder.Services.AddTransient<AccessTokenHandler>();
-            builder.Services.AddTransient<CookieHandler>();
             builder.Services.AddRazorPages();
             builder.Services.AddServerSideBlazor();
+
+            builder.Services.AddAntiforgery(options => {
+                options.HeaderName = "X-CSRF-TOKEN";
+            });
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowSpecificOrigin", policy =>
                 {
-                    policy.WithOrigins("http://localhost:5180/, https://localhost:7107/")
+                    policy.WithOrigins("https://localhost:7107")
                           .AllowCredentials()
                           .AllowAnyHeader()
                           .AllowAnyMethod();
                 });
             });
 
+            builder.Services.AddHttpClient<ApiClientService>(client => {
+                client.BaseAddress = new Uri("https://localhost:7107");
+            })
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+            {
+                var handler = new HttpClientHandler
+                {
+                    UseCookies = true,
+                    CookieContainer = new CookieContainer(),
+
+                    // Ignore SSL certs for dev
+                    ServerCertificateCustomValidationCallback =
+                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                };
+
+                return handler;
+            })
+            .AddHttpMessageHandler<AccessTokenHandler>();
+
             builder.Services.AddHttpClient("CalendarAPI", client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7107/");
+                client.BaseAddress = new Uri("https://localhost:7107");
                 client.DefaultRequestHeaders.Add("Accept", "application/json");
             }).ConfigurePrimaryHttpMessageHandler(sp =>
             {
-                return CookieHandler.AttachCookie(sp, "https://localhost:7107/");
-            }).AddHttpMessageHandler<AccessTokenHandler>();
+                return CookieHandler.AttachCookie(sp, "https://localhost:7107");
+            });
+
+
+            builder.Services.AddHttpClient("CSRF", options =>
+            {
+                options.BaseAddress = new Uri("https://localhost:7107");
+            }).ConfigurePrimaryHttpMessageHandler(sp =>
+            {
+                var handler = new HttpClientHandler
+                {
+
+                    // Ignore SSL certs for dev
+                    ServerCertificateCustomValidationCallback =
+                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                };
+
+                return handler;
+            });
 
             //Uses PostgreSQL
             //builder.Services.AddDbContext<CalendarDBContext>(options =>
@@ -102,7 +145,7 @@ namespace CalendarDashboard
                     var existing = db.UserTokens.FirstOrDefault(x => x.Email == email && x.Service == "google");
                     if (existing != null)
                     {
-                        existing.AccessToken = !string.IsNullOrEmpty(accessToken) ? AesGcmEncryptor.encrypt(accessToken!, Convert.FromBase64String(builder.Configuration["API_KEY"]!)) : null;
+                        existing.AccessToken = !string.IsNullOrEmpty(accessToken) ? accessToken! : null;
                         existing.RefreshToken = !string.IsNullOrEmpty(refreshToken) ? AesGcmEncryptor.encrypt(refreshToken, Convert.FromBase64String(builder.Configuration["API_KEY"]!)) : existing.RefreshToken;
                         db.UserTokens.Update(existing);
                     }
@@ -112,7 +155,7 @@ namespace CalendarDashboard
                         {
                             Email = email!,
                             Service = "google",
-                            AccessToken = !string.IsNullOrEmpty(accessToken) ? AesGcmEncryptor.encrypt(accessToken!, Convert.FromBase64String(builder.Configuration["API_KEY"]!)) : null,
+                            AccessToken = !string.IsNullOrEmpty(accessToken) ? accessToken! : null,
                             RefreshToken = AesGcmEncryptor.encrypt(refreshToken!, Convert.FromBase64String(builder.Configuration["API_KEY"]!)),
                         });
                     }
@@ -142,8 +185,9 @@ namespace CalendarDashboard
 
             app.UseRouting();
             app.UseCors("AllowSpecificOrigin");
-
+            //app.UseAuthentication();
             app.UseAuthorization();
+            app.UseAntiforgery();
 
             app.MapControllerRoute(
                 name: "default",

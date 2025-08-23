@@ -48,6 +48,7 @@ namespace CalendarDashboard.Services
                 );
             }
 
+
             //REMOVE OUTSIDE TESTING
             handler.ServerCertificateCustomValidationCallback =
                 HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;

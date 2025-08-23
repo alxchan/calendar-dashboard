@@ -5,16 +5,19 @@ using CalendarDashboard.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Antiforgery;
 
 namespace CalendarDashboard.Controllers
 {
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private readonly IAntiforgery antiforgery;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger, IAntiforgery antiforgery)
         {
             _logger = logger;
+            this.antiforgery = antiforgery;
         }
 
         public IActionResult Index()
@@ -30,6 +33,7 @@ namespace CalendarDashboard.Controllers
         [Authorize]
         public IActionResult Calendar() 
         {
+            //ViewData["CSRF-Token"] = antiforgery.GetAndStoreTokens(HttpContext!).RequestToken;
             return View();
         }
 

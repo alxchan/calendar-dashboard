@@ -1,5 +1,10 @@
-﻿using System.Security.Claims;
+﻿using System.Net;
+using System.Net.Http;
+using System.Security.Claims;
 using CalendarDashboard.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json.Linq;
 
 namespace CalendarDashboard.Services
@@ -30,11 +35,11 @@ namespace CalendarDashboard.Services
         //    else { return AesGcmEncryptor.decrypt(data.AccessToken!, Convert.FromBase64String(configuration["API_KEY"]!)); }
         //}
 
-        public string? GetDecryptedRefreshToken()
+        public async Task<string?> GetDecryptedRefreshToken()
         {
-            var claims = httpContextAccessor.HttpContext?.User.Claims;
-            var googleUserId = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var data = dbContext.UserTokens.FirstOrDefault(x => x.Email == googleUserId);
+            var authResult = await httpContextAccessor.HttpContext!.AuthenticateAsync();
+            var accessToken = authResult.Properties!.GetTokenValue("access_token");
+            var data = dbContext.UserTokens.FirstOrDefault(x => x.AccessToken == accessToken);
             if (data == null) { return null; }
             else
             {
@@ -43,7 +48,8 @@ namespace CalendarDashboard.Services
             }
         }
 
-        public async Task<string> RefreshAccessToken(string refreshToken)
+
+        public async System.Threading.Tasks.Task<string?> RefreshAccessToken(string refreshToken)
         {
             //When making requests to refresh access tokens i.e. offline tasks, store the user id in the associated tasks
             var postData = new Dictionary<string, string> {
@@ -62,8 +68,23 @@ namespace CalendarDashboard.Services
             var tokenData = JObject.Parse(responseContent);
             string newAccessToken = tokenData.Value<string>("access_token")!;
 
-            return newAccessToken;
+            var claimsIdentity = (ClaimsIdentity)httpContextAccessor.HttpContext!.User.Identity!;
+            var oldAccessTokenClaim = claimsIdentity.FindFirst("access_token");
+            if (oldAccessTokenClaim != null)
+            {
+                claimsIdentity.RemoveClaim(oldAccessTokenClaim);
+            }
+            claimsIdentity.AddClaim(new Claim("access_token", newAccessToken));
+            await httpContextAccessor.HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
+            return httpContextAccessor.HttpContext.Response.Headers["Set-Cookie"].ToString();
+
+        }
+
+        public String? GetAuthCookie() {
+            var authCookie = httpContextAccessor.HttpContext!.Request.Cookies[".AspNetCore.Cookies"];
+            return authCookie;
         }
 
     }
 }
+

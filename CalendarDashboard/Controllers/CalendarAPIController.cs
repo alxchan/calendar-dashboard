@@ -1,11 +1,15 @@
-﻿using System.Security.Claims;
+﻿using System.Net.Http;
+using System.Security.Claims;
 using CalendarDashboard.Models;
 using CalendarDashboard.Services;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 
 namespace CalendarDashboard.Controllers
 {
@@ -17,28 +21,36 @@ namespace CalendarDashboard.Controllers
         private readonly CalendarServiceHandler calendarServiceHandler;
         private readonly TokenServiceHandler tokenServiceHandler;
         private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly IAntiforgery antiforgery;
 
-        public CalendarAPIController(CalendarDBContext db, CalendarServiceHandler calendarServiceHandler, TokenServiceHandler tokenServiceHandler, IHttpContextAccessor httpContext)
+        public CalendarAPIController(CalendarDBContext db, CalendarServiceHandler calendarServiceHandler, TokenServiceHandler tokenServiceHandler, IHttpContextAccessor httpContext, IAntiforgery antiforgery)
         {
             this.db = db;
             this.calendarServiceHandler = calendarServiceHandler;
             this.tokenServiceHandler = tokenServiceHandler;
             this.httpContextAccessor = httpContext;
+            this.antiforgery = antiforgery;
         }
 
+        [HttpGet("token")]
+        public IActionResult GetToken()
+        {
+            var tokens = antiforgery.GetAndStoreTokens(httpContextAccessor.HttpContext!);
+            return Ok(tokens.RequestToken);
+        }
+
+        [ValidateAntiForgeryToken]
         [HttpGet("test")]
         public async Task<IActionResult> RetrieveUpcomingEvents()
         {
-            Console.WriteLine("Service: " + HttpContext.User?.FindFirst("service")!.Value);
+            try { 
+            
             var calendarService = new GoogleCalendarService(calendarServiceHandler, tokenServiceHandler, httpContextAccessor);
             var email = HttpContext.User?.FindFirst(ClaimTypes.Email)?.Value;
             var calendarIds = await calendarService.GetCalendarIds();
-            for (int i = 0; i < calendarIds.Count; i++) {
-                Console.WriteLine(calendarIds);
-            
-            }
             var calendarId = calendarIds[calendarIds.Count-1];
             var listEvents = await calendarService.GetUpcomingEvents(calendarId);
+            var listLocalEvents = new List<LocalEvent>();
             foreach (var item in listEvents!)
             {
                 var existing = db.Events.FirstOrDefault(x => x.Email == email);
@@ -52,23 +64,33 @@ namespace CalendarDashboard.Controllers
                     existing.Description = item.Description ?? existing.Description;
                     existing.Location = item.Location ?? existing.Location;
                     db.Events.Update(existing);
+                    listLocalEvents.Add(new LocalEvent() { Email = email!, EventId = item.Id, CalendarId = calendarId, Name = item.Summary, Description = item.Description, StartTime = item.Start!, EndTime = item.End!, Location = item.Location });
                 }
-                else {
+                else { 
                     db.Events.Add(new LocalEvent() { Email = email!, EventId = item.Id, CalendarId = calendarId, Name = item.Summary, Description = item.Description, StartTime = item.Start!, EndTime = item.End!, Location = item.Location });
-
                 }
-                    Console.WriteLine(item.CreatedDateTimeOffset);
             }
             await db.SaveChangesAsync();
             if (listEvents == null) { return Unauthorized("User is not signed in!"); }
-            return Ok(listEvents);
+            return Ok(listLocalEvents);
+            }
+            catch
+            {
+                return Unauthorized();
+            }
         }
 
-        //[HttpGet("refresh")]
-        //public async Task<string> RefreshToken() 
-        //{
-        //    return await tokenServiceHandler.RefreshAccessToken("");
-        
-        //}
+        [ValidateAntiForgeryToken]
+        [HttpPost("refresh")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var refreshToken = await tokenServiceHandler.GetDecryptedRefreshToken();
+            if(refreshToken == null)
+            {
+                return Unauthorized("User is not signed in!");
+            }
+            return Ok(await tokenServiceHandler.RefreshAccessToken(refreshToken!));
+
+        }
     }
 }
