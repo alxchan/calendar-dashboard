@@ -42,7 +42,7 @@ namespace CalendarDashboard.Services
             var accessToken = authResult.Properties!.GetTokenValue("access_token");
             var calendarService = calendarServiceHandler.GenerateCalendarService(accessToken!);
             var request = calendarService.Events.List(calendarId);
-            request.TimeMinDateTimeOffset = DateTime.Now;
+            request.TimeMinDateTimeOffset = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
             request.ShowDeleted = false;
             request.SingleEvents = true;
             request.MaxResults = 10;

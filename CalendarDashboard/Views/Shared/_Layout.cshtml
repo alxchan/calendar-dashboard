@@ -10,7 +10,7 @@
     <base href="~/" />
 </head>
 
-<body class="bg-background flex h-screen flex-col">
+<body class="bg-background flex h-screen w-screen flex-col">
     <header>
         <div class="text-primary-text flex justify-between flex-row items-center px-6 py-4">
             <a class="text-2xl" asp-area="" asp-controller="Home" asp-action="Index">CalendarDashboard</a>
@@ -27,11 +27,11 @@
             </ul>
         </div>
     </header>
-        <main role="main" class="pb-3 overflow-y-auto flex-1">
+        <main role="main" class="pb-20 overflow-y-auto flex-1">
             @RenderBody()
         </main>
 
-    <footer class="border-t footer text-gray-500 px-6 py-4 bg-background">
+    <footer class="flex border-t footer text-gray-500 px-6 py-4 bg-background">
         <div class="container">
             &copy; 2025 - CalendarDashboard - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
