@@ -1,7 +1,9 @@
+@using Microsoft.AspNetCore.Components.Web
 @using CalendarDashboard.Models
 @using Google.Apis.Calendar.v3.Data
 @using System.Text.Json
 @inject ApiClientService apiClientService
+@inject IHttpContextAccessor httpContextAccessor
 
 @{
     var today = DateTime.Today;
@@ -26,32 +28,56 @@ else
             var day = days[i];
             var dayEvents = calendarEvents!.Where(e => DateTime.Parse(e.StartTime.DateTimeRaw).Date == day.Date).ToList();
 
-            <div class="gap-1 flex flex-col cursor-default select-none">
-                <div class="bg-secondary-background flex min:h-fit justify-center items-center py-2 flex-col">
+            <div class="gap-1 flex flex-col cursor-default select-none ">
+                <div class="bg-secondary-background flex min:h-fit justify-center items-center py-2 flex-col [&>*]:text-primary-text">
                     <div class="font-semibold">@day.ToString("dddd")</div>
                     <div class="font-semibold">@day.Day</div>
                 </div>
                 @foreach (var evt in dayEvents)
                     {
-                        <div class="bg-secondary-background cursor-default min:h-fit py-3 flex justify-center items-center flex-col truncate max-w-full">
+                        <div id=@evt.EventId class="bg-secondary-background cursor-default min:h-fit py-3 flex justify-center items-center flex-col truncate max-w-full">
                             <div class="font-medium truncate max-w-[90vw] text-secondary-text">@evt.Name</div>
                             <div class="text-sm text-secondary-text">@DateTime.Parse(evt.StartTime.DateTimeRaw).ToString("h:mm tt") - @DateTime.Parse(evt.EndTime.DateTimeRaw).ToString("h:mm tt")</div>
                         </div>
                     }
-                <div class="md:flex hidden bg-background opacity-0 cursor-pointer hover:opacity-50 justify-center items-center flex-col py-5">Add</div>
+                <div @onclick="ToggleModal" class="md:flex hidden bg-background opacity-0 cursor-pointer hover:opacity-50 justify-center items-center flex-col py-5">Add</div>
             </div>
         }
     <div class="md:hidden absolute col-span-1 mt-4 text-center flex flex-row-reverse right-5 bottom-26">
-        <button class="bg-background text-secondary-text px-6 py-3 rounded-full shadow-lg hover:brightness-150 cursor-pointer select-none">
+        <button @onclick="ToggleModal" class="bg-background text-secondary-text px-6 py-3 rounded-full shadow-lg hover:brightness-150 cursor-pointer select-none">
         +
         </button>
     </div>
     </div>
 }
+
+@if (showModal)
+{
+    <div class="bg-background h-screen w-screen absolute top-0 left-0 z-100 flex items-center justify-center">
+        <div class="bg-secondary-background h-1/2 w-1/2 rounded-xl [&>*]:text-background [&>*]:bg-primary-text">
+            <input @bind="summary" id="title"/>
+            <input @bind="description" id="desc"/>
+            @* Make my own date picker later *@
+            <Component />
+            <input @bind="endDate" type="date" />
+            <input @bind="startTime" type="time" />
+            <input @bind="endTime" type="time" />
+        </div>
+        <button @onclick="AddEvent" class="h-20 w-20 bg-red-500">Add Event</button>
+        <button @onclick="ToggleModal" class="h-20 w-20 bg-black-500">Close Modal</button>
+    </div>
+}
 @code {
     private string? data;
+    private string? summary;
+    private string? description;
+    private DateOnly startDate = DateOnly.FromDateTime(DateTime.Today);
+    private DateOnly endDate = DateOnly.FromDateTime(DateTime.Today);
+    private TimeOnly startTime = TimeOnly.FromDateTime(DateTime.Now);
+    private TimeOnly endTime = TimeOnly.FromDateTime(DateTime.Now);
     private bool isLoading = true;
-    private List<LocalEvent> calendarEvents;
+    private bool showModal = false;
+    private List<LocalEvent> calendarEvents = new List<LocalEvent>();
 
     protected override async System.Threading.Tasks.Task OnAfterRenderAsync(bool firstRender)
     {
@@ -74,5 +100,21 @@ else
                 StateHasChanged();
             }
         }
+    }
+
+    private void ToggleModal()
+    {
+        showModal = !showModal;
+        StateHasChanged();
+    }
+
+    private async void AddEvent()
+    {
+        string email = httpContextAccessor.HttpContext!.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value!;
+        var start = new DateTime(startDate, startTime);
+        var end = new DateTime(endDate, endTime);
+
+        var localEvent = new EventDTO() { Name = summary, Description = description, StartTime = start, EndTime = end, Email = email };
+        await apiClientService.AddEvent(localEvent);
     }
 }

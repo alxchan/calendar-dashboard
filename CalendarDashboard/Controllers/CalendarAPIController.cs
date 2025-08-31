@@ -44,40 +44,82 @@ namespace CalendarDashboard.Controllers
         public async Task<IActionResult> RetrieveUpcomingEvents()
         {
             try { 
-            
-            var calendarService = new GoogleCalendarService(calendarServiceHandler, tokenServiceHandler, httpContextAccessor);
-            var email = HttpContext.User?.FindFirst(ClaimTypes.Email)?.Value;
-            var calendarIds = await calendarService.GetCalendarIds();
-            var calendarId = calendarIds[calendarIds.Count-1];
-            var listEvents = await calendarService.GetUpcomingEvents(calendarId);
-            var listLocalEvents = new List<LocalEvent>();
-            foreach (var item in listEvents!)
-            {
-                var existing = db.Events.FirstOrDefault(x => x.Email == email);
-                if (existing != null)
+                var calendarService = new GoogleCalendarService(calendarServiceHandler, tokenServiceHandler, httpContextAccessor);
+                var email = HttpContext.User?.FindFirst(ClaimTypes.Email)?.Value;
+                var calendarIds = await calendarService.GetCalendarIds();
+                var calendarId = calendarIds[calendarIds.Count-1];
+                var listEvents = await calendarService.GetUpcomingEvents(calendarId);
+                var listLocalEvents = new List<LocalEvent>();
+                foreach (var item in listEvents!)
                 {
-                    existing.Attendees = (List<EventAttendee>?)(item.Attendees ?? existing.Attendees);
-                    existing.Status = item.Status ?? existing.Status;
-                    existing.StartTime = item.Start ?? existing.StartTime;
-                    existing.EndTime = item.End ?? existing.EndTime;
-                    existing.Name = item.Summary ?? existing.Name;
-                    existing.Description = item.Description ?? existing.Description;
-                    existing.Location = item.Location ?? existing.Location;
-                    db.Events.Update(existing);
-                    listLocalEvents.Add(new LocalEvent() { Email = email!, EventId = item.Id, CalendarId = calendarId, Name = item.Summary, Description = item.Description, StartTime = item.Start!, EndTime = item.End!, Location = item.Location });
+                    var existing = db.Events.FirstOrDefault(x => x.Email == email);
+                    if (existing != null)
+                    {
+                        existing.Attendees = (List<EventAttendee>?)(item.Attendees ?? existing.Attendees);
+                        existing.Status = item.Status ?? existing.Status;
+                        existing.StartTime = item.Start ?? existing.StartTime;
+                        existing.EndTime = item.End ?? existing.EndTime;
+                        existing.Name = item.Summary ?? existing.Name;
+                        existing.Description = item.Description ?? existing.Description;
+                        existing.Location = item.Location ?? existing.Location;
+                        db.Events.Update(existing);
+                        listLocalEvents.Add(new LocalEvent() { Email = email!, EventId = item.Id, CalendarId = calendarId, Name = item.Summary, Description = item.Description, StartTime = item.Start!, EndTime = item.End!, Location = item.Location });
+                    }
+                    else { 
+                        db.Events.Add(new LocalEvent() { Email = email!, EventId = item.Id, CalendarId = calendarId, Name = item.Summary, Description = item.Description, StartTime = item.Start!, EndTime = item.End!, Location = item.Location });
+                    }
                 }
-                else { 
-                    db.Events.Add(new LocalEvent() { Email = email!, EventId = item.Id, CalendarId = calendarId, Name = item.Summary, Description = item.Description, StartTime = item.Start!, EndTime = item.End!, Location = item.Location });
-                }
-            }
-            await db.SaveChangesAsync();
-            if (listEvents == null) { return Unauthorized("User is not signed in!"); }
-            return Ok(listLocalEvents);
+                await db.SaveChangesAsync();
+                if (listEvents == null) { return Unauthorized("User is not signed in!"); }
+                return Ok(listLocalEvents);
             }
             catch
             {
                 return Unauthorized();
             }
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost("add_event")]
+        public async Task<IActionResult> AddEvent([FromBody] EventDTO localEvent)
+        {
+            try
+            {
+                var calendarService = new GoogleCalendarService(calendarServiceHandler, tokenServiceHandler, httpContextAccessor);
+                var startTime = new EventDateTime()
+                {
+                    DateTimeDateTimeOffset = new DateTimeOffset(localEvent.StartTime)
+                };
+                var endTime = new EventDateTime()
+                {
+                    DateTimeDateTimeOffset = new DateTimeOffset(localEvent.EndTime)
+                };
+                await calendarService.AddEvent(localEvent.Name, localEvent.Description, startTime, endTime, localEvent.Attendees);
+                return Ok(localEvent);
+            }
+            catch
+            {
+               return Unauthorized();
+            }
+
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost("delete_event")]
+        public async Task<IActionResult> deleteEvent([FromBody] string eventId)
+        {
+            try
+            {
+                var calendarService = new GoogleCalendarService(calendarServiceHandler, tokenServiceHandler, httpContextAccessor);
+                await calendarService.DeleteEvent(eventId);
+                return Ok("Event " + eventId + " has been deleted");
+
+            }
+            catch
+            {
+                return Unauthorized();
+            }
+
         }
 
         [ValidateAntiForgeryToken]
@@ -87,7 +129,7 @@ namespace CalendarDashboard.Controllers
             var refreshToken = await tokenServiceHandler.GetDecryptedRefreshToken();
             if(refreshToken == null)
             {
-                return Unauthorized("User is not signed in!");
+                return Unauthorized();
             }
             return Ok(await tokenServiceHandler.RefreshAccessToken(refreshToken!));
 

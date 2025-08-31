@@ -48,11 +48,21 @@ public class ApiClientService
 
         if(apiResponse.StatusCode != HttpStatusCode.OK)
         {
-            var tokenRequest = new HttpRequestMessage(HttpMethod.Post, "/api/calendar/refresh");
+            //Refresh the token
+            var tokenRequest = new HttpRequestMessage(HttpMethod.Get, "/api/calendar/refresh");
             var accessToken = await _httpClient.SendAsync(tokenRequest);
+            
+            //Retry the request
+            var retryRequest = new HttpRequestMessage(HttpMethod.Get, apiEndpoint);
+            apiResponse = await _httpClient.SendAsync(retryRequest);
         }
 
         return await _httpClient.GetFromJsonAsync<List<LocalEvent>>(apiEndpoint);
     }
 
+    public async System.Threading.Tasks.Task AddEvent(EventDTO localEvent)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/api/calendar/add_event", localEvent);
+        Console.WriteLine(response);
+    }
 }

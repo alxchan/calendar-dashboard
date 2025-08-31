@@ -3,26 +3,15 @@ using Google.Apis.Calendar.v3.Data;
 
 namespace CalendarDashboard.Models
 {
-    public class LocalEvent
+    public class EventDTO
     {
-        //REQUIRED PROPERTIES
-        [Key]
-        public int Id { get; set; }
 
         [Required]
         public string Email { get; set; } = null!;
 
-        [Required]
-        public string? EventId { get; set; }
+        public DateTime StartTime { get; set; }
 
-        [Required]
-        public string? CalendarId { get; set; }
-        
-        [Required]
-        public EventDateTime StartTime { get; set; } = null!;
-        
-        [Required]
-        public EventDateTime EndTime { get; set; } = null!;
+        public DateTime EndTime { get; set; }
 
 
         //COMMON OPTIONAL PROPERTIES
@@ -30,13 +19,13 @@ namespace CalendarDashboard.Models
         public string? Name { get; set; }
 
         public string? Description { get; set; }
-       
+
         public string? Location { get; set; }
 
         public string? Status { get; set; }
-        
+
         public List<EventAttendee>? Attendees { get; set; }
-       
+
 
         //LESS COMMONLY USED PROPERTIES
         public string? Notes { get; set; }
