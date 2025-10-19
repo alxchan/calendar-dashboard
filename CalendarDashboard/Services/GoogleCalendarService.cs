@@ -70,7 +70,7 @@ namespace CalendarDashboard.Services
             };
             var request = calendarService.Events.Insert(newEvent, "primary");
             var createdRequest = await request.ExecuteAsync();
-            return newEvent;  
+            return createdRequest;  
           
         }
 

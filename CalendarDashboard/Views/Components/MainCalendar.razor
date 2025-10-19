@@ -27,6 +27,7 @@ else
         {
             var day = days[i];
             var dayEvents = calendarEvents!.Where(e => DateTime.Parse(e.StartTime.DateTimeRaw).Date == day.Date).ToList();
+            var dayTasks = tasks!.Where(e => e.StartTime.Date == day.Date).ToList();
 
             <div class="gap-1 flex flex-col cursor-default select-none ">
                 <div class="bg-secondary-background flex min:h-fit justify-center items-center py-2 flex-col [&>*]:text-primary-text">
@@ -35,11 +36,18 @@ else
                 </div>
                 @foreach (var evt in dayEvents)
                     {
-                        <div id=@evt.EventId class="bg-secondary-background cursor-default min:h-fit py-3 flex justify-center items-center flex-col truncate max-w-full">
-                            <div class="font-medium truncate max-w-[90vw] text-secondary-text">@evt.Name</div>
+                        <div id=@evt.EventId @key="evt" @onclick="() => DeleteEvent(evt.EventId)"  class="bg-secondary-background cursor-default min:h-fit py-3 flex justify-center items-center flex-col truncate max-w-full">
+                            <div class="font-medium truncate max-w-[90vw] text-secondary-text" id=@evt.EventId>@evt.Name</div>
                             <div class="text-sm text-secondary-text">@DateTime.Parse(evt.StartTime.DateTimeRaw).ToString("h:mm tt") - @DateTime.Parse(evt.EndTime.DateTimeRaw).ToString("h:mm tt")</div>
                         </div>
                     }
+                @foreach (var evt in dayTasks)
+                {
+                    <div id=@evt.Id @key="evt" @onclick="() => DeleteTask(evt.Id)" class="bg-secondary-background cursor-default min:h-fit py-3 flex justify-center items-center flex-col truncate max-w-full">
+                        <div class="font-medium truncate max-w-[90vw] text-secondary-text" id=@evt.Id>@evt.Name</div>
+                        <div class="text-sm text-secondary-text">@evt.StartTime.ToString("h:mm tt")</div>
+                    </div>
+                }
                 <div @onclick="ToggleModal" class="md:flex hidden bg-background opacity-0 cursor-pointer hover:opacity-50 justify-center items-center flex-col py-5">Add</div>
             </div>
         }
@@ -53,18 +61,44 @@ else
 
 @if (showModal)
 {
-    <div class="bg-background h-screen w-screen absolute top-0 left-0 z-100 flex items-center justify-center">
-        <div class="bg-secondary-background h-1/2 w-1/2 rounded-xl [&>*]:text-background [&>*]:bg-primary-text">
-            <input @bind="summary" id="title"/>
-            <input @bind="description" id="desc"/>
-            @* Make my own date picker later *@
-            <Component />
-            <input @bind="endDate" type="date" />
-            <input @bind="startTime" type="time" />
-            <input @bind="endTime" type="time" />
+    <div @onclick="ToggleModal" class="bg-background h-screen w-screen absolute top-0 left-0 z-100 flex items-center justify-center">
+        <div class="relative bg-secondary-background flex flex-col h-1/2 w-1/2 rounded-xl" @onclick:stopPropagation>
+            <div class="flex justify-between mt-4">
+                <button class="h-12 w-24 bg-background text-primary-text m-4" @onclick="ToggleModal">Close Modal</button>
+                <button class="h-12 w-24 bg-background text-primary-text m-4" @onclick="ToggleEvent">Add Item</button>
+            </div>
+            <select @bind="SelectedItem" class="[&>*]:bg-background h-1/12 m-4 [&>*]:!text-primary-text text-primary-text">
+                <option value="Event">Event</option>
+                <option value="Task">Task</option>
+            </select>
+
+            @if(SelectedItem == "Event")
+            {    
+            @* Code for events: *@
+
+                <div class="[&>*]:bg-background [&>*]:text-primary-text flex-1 [&>*]:m-4 m-4 flex-col flex gap-3">
+                <input @bind="summary" id="title" placeholder="Title of Event"/>
+                <input @bind="description" id="desc" placeholder="Description"/>
+                <input @bind="startDate" type="date" placeholder="Start date" />
+                <input @bind="endDate" type="date" min="@startDate" placeholder="End date" />
+                <input @bind="startTime" type="time" />
+                <input @bind="endTime" min="@startDate = @endDate ? @startTime : null" type="time" />
+            </div>
+            }
+
+            @if (SelectedItem == "Task")
+            {
+                @* Code for events: *@
+
+                <div class="[&>*]:bg-background [&>*]:text-primary-text [&>*]:m-4 m-4 flex flex-col gap-3">
+                    <input @bind="summary" id="title" placeholder="Task name"/>
+                    <input @bind="startDate" type="date" placeholder="Start date" readonly/>
+                    <input @bind="endDate" type="date" min="@DateTime.Now.ToString("yyyy-MM-dd")" placeholder="End date" />
+                    <input @bind="startTime" type="time" readonly/>
+                </div>
+            }
+
         </div>
-        <button @onclick="AddEvent" class="h-20 w-20 bg-red-500">Add Event</button>
-        <button @onclick="ToggleModal" class="h-20 w-20 bg-black-500">Close Modal</button>
     </div>
 }
 @code {
@@ -77,7 +111,9 @@ else
     private TimeOnly endTime = TimeOnly.FromDateTime(DateTime.Now);
     private bool isLoading = true;
     private bool showModal = false;
+    private string SelectedItem = "Event";
     private List<LocalEvent> calendarEvents = new List<LocalEvent>();
+    private List<CalendarDashboard.Models.Task> tasks = new List<CalendarDashboard.Models.Task>();
 
     protected override async System.Threading.Tasks.Task OnAfterRenderAsync(bool firstRender)
     {
@@ -86,7 +122,11 @@ else
 
             try
             {
+                //Fetch the calendar events
                 calendarEvents = await apiClientService.CallApiAsync("/api/calendar/test");
+
+                //Fetch the tasks
+                tasks = await apiClientService.GetTasksAsync("/api/calendar/task");
                 // calendarEvents = JsonSerializer.Deserialize<List<LocalEvent>>(data!)!;
             }
             catch (HttpRequestException ex)
@@ -104,6 +144,12 @@ else
 
     private void ToggleModal()
     {
+        summary = "";
+        description = "";
+        startDate = DateOnly.FromDateTime(DateTime.Today);
+        endDate = DateOnly.FromDateTime(DateTime.Today);
+        startTime = TimeOnly.FromDateTime(DateTime.Now);
+        endTime = TimeOnly.FromDateTime(DateTime.Now);
         showModal = !showModal;
         StateHasChanged();
     }
@@ -115,6 +161,43 @@ else
         var end = new DateTime(endDate, endTime);
 
         var localEvent = new EventDTO() { Name = summary, Description = description, StartTime = start, EndTime = end, Email = email };
-        await apiClientService.AddEvent(localEvent);
+        await apiClientService.AddEvent(localEvent, calendarEvents);
+        StateHasChanged();
+    }
+
+    private async void AddTask()
+    {
+        string email = httpContextAccessor.HttpContext!.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value!;
+        var start = new DateTime(startDate, startTime);
+        var end = new DateTime(endDate, endTime);
+
+        var localEvent = new CalendarDashboard.Models.Task() { Email = email, Completed = false, Name = summary, StartTime = new DateTime(startDate, startTime) };
+        await apiClientService.AddTask(localEvent, tasks);
+        StateHasChanged();
+    }
+
+    private async void DeleteEvent(string eventId)
+    {
+        await apiClientService.DeleteEvent(eventId, calendarEvents);
+        StateHasChanged();
+    }
+
+    private async void DeleteTask(int eventId)
+    {
+        await apiClientService.DeleteTask(eventId, tasks);
+        StateHasChanged();
+    }
+
+    private async void ToggleEvent()
+    {
+        if (SelectedItem == "Event")
+        {
+            AddEvent();
+        }
+        else
+        {
+            AddTask();
+        }
+        showModal = false;
     }
 }

@@ -8,13 +8,18 @@ namespace CalendarDashboard.Models
         public int Id { get; set; }
 
         [Required]
+        public string? Email { get; set; }
+
+        [Required]
         public string? Name { get; set; }
         
-        [Required]
         public decimal CompletionRate { get; set; }
         
         [Required]
         public bool Completed { get; set; }
+
+        [Required]
+        public DateTime StartTime { get; set; }
 
         public string? Description { get; set; }
 

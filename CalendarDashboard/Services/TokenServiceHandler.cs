@@ -2,6 +2,7 @@
 using System.Net.Http;
 using System.Security.Claims;
 using CalendarDashboard.Models;
+using Google.Apis.Auth.OAuth2.Responses;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
@@ -49,7 +50,7 @@ namespace CalendarDashboard.Services
         }
 
 
-        public async System.Threading.Tasks.Task<string?> RefreshAccessToken(string refreshToken)
+        public async System.Threading.Tasks.Task<JObject> RefreshAccessToken(string refreshToken)
         {
             //When making requests to refresh access tokens i.e. offline tasks, store the user id in the associated tasks
             var postData = new Dictionary<string, string> {
@@ -64,20 +65,26 @@ namespace CalendarDashboard.Services
             HttpResponseMessage response = await client.PostAsync("https://oauth2.googleapis.com/token", content);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
-
             var tokenData = JObject.Parse(responseContent);
+
+            return tokenData; 
             string newAccessToken = tokenData.Value<string>("access_token")!;
 
-            var claimsIdentity = (ClaimsIdentity)httpContextAccessor.HttpContext!.User.Identity!;
-            var oldAccessTokenClaim = claimsIdentity.FindFirst("access_token");
-            if (oldAccessTokenClaim != null)
-            {
-                claimsIdentity.RemoveClaim(oldAccessTokenClaim);
-            }
-            claimsIdentity.AddClaim(new Claim("access_token", newAccessToken));
-            await httpContextAccessor.HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));
-            return httpContextAccessor.HttpContext.Response.Headers["Set-Cookie"].ToString();
+            //// Get the current authentication ticket
+            //var authResult = await httpContextAccessor.HttpContext!.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
+            //if (!authResult.Succeeded || authResult.Principal == null)
+            //    return ""; // user not authenticated
+
+            //// Suppose tokenResponse is from your refresh call
+            //authResult.Properties.UpdateTokenValue("access_token", newAccessToken);
+
+            //// Update the authentication ticket and sign in with the new principal
+            //await httpContextAccessor.HttpContext!.SignInAsync(
+            //    CookieAuthenticationDefaults.AuthenticationScheme,
+            //    authResult.Principal,
+            //    authResult.Properties
+            //);
         }
 
         public String? GetAuthCookie() {

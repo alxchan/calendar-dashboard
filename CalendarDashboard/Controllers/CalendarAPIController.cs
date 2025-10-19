@@ -32,7 +32,7 @@ namespace CalendarDashboard.Controllers
             this.antiforgery = antiforgery;
         }
 
-        [HttpGet("token")]
+        [HttpPost("token")]
         public IActionResult GetToken()
         {
             var tokens = antiforgery.GetAndStoreTokens(httpContextAccessor.HttpContext!);
@@ -80,6 +80,37 @@ namespace CalendarDashboard.Controllers
         }
 
         [ValidateAntiForgeryToken]
+        [HttpGet("task")]
+        public async Task<IActionResult> RetrieveTasks()
+        {
+            var email = HttpContext.User?.FindFirst(ClaimTypes.Email).Value;
+            var tasks = db.Tasks
+                .Where(x => x.Email == email)
+                .ToList();
+            return Ok(tasks);
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost("add_task")]
+        public async Task<IActionResult> AddTask([FromBody] CalendarDashboard.Models.Task task)
+        {
+            db.Tasks.Add(task);
+            db.SaveChangesAsync();
+            return Ok(task);
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost("delete_task")]
+        public async Task<IActionResult> RemoveTask([FromBody] int taskId)
+        {
+            var task = await db.Tasks.FindAsync(taskId);
+            db.Tasks.Remove(task);
+            db.SaveChangesAsync();
+            return Ok(task);
+        }
+
+
+        [ValidateAntiForgeryToken]
         [HttpPost("add_event")]
         public async Task<IActionResult> AddEvent([FromBody] EventDTO localEvent)
         {
@@ -94,8 +125,16 @@ namespace CalendarDashboard.Controllers
                 {
                     DateTimeDateTimeOffset = new DateTimeOffset(localEvent.EndTime)
                 };
-                await calendarService.AddEvent(localEvent.Name, localEvent.Description, startTime, endTime, localEvent.Attendees);
-                return Ok(localEvent);
+                var response = await calendarService.AddEvent(localEvent.Name, localEvent.Description, startTime, endTime, localEvent.Attendees);
+                var newEvent = new LocalEvent()
+                {
+                    Name = response!.Summary,
+                    Description = response.Description,
+                    StartTime = response.Start,
+                    EndTime = response.End,
+                    EventId = response.Id,
+                };
+                return Ok(newEvent);
             }
             catch
             {
@@ -122,17 +161,18 @@ namespace CalendarDashboard.Controllers
 
         }
 
-        [ValidateAntiForgeryToken]
-        [HttpPost("refresh")]
-        public async Task<IActionResult> RefreshToken()
-        {
-            var refreshToken = await tokenServiceHandler.GetDecryptedRefreshToken();
-            if(refreshToken == null)
-            {
-                return Unauthorized();
-            }
-            return Ok(await tokenServiceHandler.RefreshAccessToken(refreshToken!));
+        //[ValidateAntiForgeryToken]
+        //[HttpPost("refresh")]
+        //public async Task<IActionResult> RefreshToken()
+        //{
+        //    var refreshToken = await tokenServiceHandler.GetDecryptedRefreshToken();
+        //    if(refreshToken == null)
+        //    {
+        //        return Unauthorized();
+        //    }
+        //    await tokenServiceHandler.RefreshAccessToken(refreshToken!);
+        //    return Ok();
 
-        }
+        //}
     }
 }

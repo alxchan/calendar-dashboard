@@ -1,8 +1,8 @@
 
 @using Microsoft.AspNetCore.Components.Web
-@inject IHttpClientFactory ClientFactory
+@inject ApiClientService apiClientService;
 
-@if (isLoading)
+@* @if (isLoading)
 {
     <p class="text-primary-text">Loading...</p>
 }
@@ -13,28 +13,20 @@ else if (!string.IsNullOrEmpty(data))
 else
 {
     <p class="text-primary-text">Failed to load data. Please try again.</p>
-}
+} *@
 
 @code {
-    private HttpResponseMessage response;
-    private string? data;
+    private List<CalendarDashboard.Models.LocalEvent> data;
     private bool isLoading = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            var httpClient = ClientFactory.CreateClient("CalendarAPI");
 
             try
             {
-                response = await httpClient.GetAsync("api/calendar/test");
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    response = await httpClient.GetAsync("api/calendar/test");    
-                }
-                data = await response.Content.ReadAsStringAsync();
-                
+                data = await apiClientService.CallApiAsync("/api/calendar/test");
             }
             catch (HttpRequestException ex)
             {
@@ -43,9 +35,8 @@ else
             }
             finally
             {
-                // The component has been initialized, so stop the loading state.
                 isLoading = false;
-                StateHasChanged(); // Force a re-render to update the UI
+                StateHasChanged();
             }
         }
     }

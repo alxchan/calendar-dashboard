@@ -1,8 +1,10 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Numerics;
 using System.Reflection.Metadata;
 using System.Security.Claims;
+using System.Security.Principal;
 using System.Text.Json;
 using CalendarDashboard.Models;
 using CalendarDashboard.Services;
@@ -16,6 +18,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 
 namespace CalendarDashboard
 {
@@ -116,6 +119,48 @@ namespace CalendarDashboard
                 options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
                 options.SlidingExpiration = true;
+
+                options.Events = new CookieAuthenticationEvents
+                {
+                    OnValidatePrincipal = async context =>
+                    {
+                        var identity = (ClaimsIdentity) context.Principal.Identity;
+                        var accessTokenClaim = identity.FindFirst("access_token");
+                        var expiryClaim = identity.FindFirst("expires_at");
+
+                        Console.WriteLine("OnValidatePrincipal triggered at " + expiryClaim.ToString() + " " + DateTimeOffset.UtcNow);
+
+                        if (DateTimeOffset.TryParse(expiryClaim.Value, out var expiresAt))
+                        {
+                           if(expiresAt <= DateTimeOffset.UtcNow.AddMinutes(2))
+                            {
+                                var httpContext = context.HttpContext;
+                                var tokenServiceHandler = context.HttpContext.RequestServices.GetRequiredService<TokenServiceHandler>();
+                                var refreshToken = await tokenServiceHandler.GetDecryptedRefreshToken();
+                                var newAccessToken = await tokenServiceHandler.RefreshAccessToken(refreshToken);
+                                if(newAccessToken == null)
+                                {
+                                    context.RejectPrincipal();
+                                    await httpContext.SignOutAsync();
+                                    return;
+                                }
+
+                                identity.RemoveClaim(accessTokenClaim);
+                                identity.AddClaim(new Claim("access_token", newAccessToken.Value<string>("access_token")!));
+                                var expiresIn = newAccessToken.Value<long>("expires_in");
+                                var expiresInTimespan = TimeSpan.FromSeconds(expiresIn);
+                                identity.RemoveClaim(expiryClaim);
+                                identity.AddClaim(new Claim("expires_at", (DateTimeOffset.UtcNow + expiresInTimespan).ToString("o")));
+                                context.ReplacePrincipal(new ClaimsPrincipal(identity));
+                                context.ShouldRenew = true;
+                            }
+                        }
+                    }
+                };
+
+
+
+
             }).AddGoogle(options =>
             {
                 options.ClientId = builder.Configuration["Google:ClientId"]!;
@@ -133,10 +178,13 @@ namespace CalendarDashboard
                         claimsIdentity.AddClaim(new Claim("service", "google"));
                     }
 
-
+               
+                    var expiresAt = DateTimeOffset.UtcNow.Add(context.ExpiresIn.Value);
+                    claimsIdentity.AddClaim(new Claim("expires_at", expiresAt.ToString("o")));
+       
                     var accessToken = context.AccessToken;
                     var refreshToken = context.RefreshToken;
-                    DateTime? expiresAt = context.ExpiresIn.HasValue ? DateTime.UtcNow.Add(context.ExpiresIn.Value) : null;
+                    //DateTime? expiresAt = context.ExpiresIn.HasValue ? DateTime.UtcNow.Add(context.ExpiresIn.Value) : null;
                     var userJSON = context.User.TryGetProperty("email", out JsonElement sub);
                     string? email = sub.GetString()!.ToLower();
 
